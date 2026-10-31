@@ -1,0 +1,712 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Em Dia</title>
+<meta name="theme-color" content="#0d3b36">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Em Dia">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600&display=swap">
+<style>
+/* Layout: barra superior + 7 colunas (seg→dom). No celular, uma coluna por tela com abas de dias. */
+:root {
+  --bg: #e9eef0;
+  --board: #dfe6e9;
+  --col: #f5f8f9;
+  --card: #ffffff;
+  --fg: #1d2a30;
+  --muted: #5f7079;
+  --line: #cbd6db;
+  --accent: #0f7b6c;
+  --accent-ink: #ffffff;
+  --today: #fff6dc;
+  --today-line: #e3b43c;
+  --danger: #c2413a;
+  --shadow: 0 1px 0 rgba(20, 40, 50, .14);
+  --l-verde: #3aa76d; --l-amarelo: #e0b228; --l-laranja: #e07b28;
+  --l-vermelho: #d4483f; --l-roxo: #8a5cc9; --l-azul: #3b7fd1;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Figtree", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12191c; --board: #172125; --col: #1e2a2f; --card: #26343a;
+    --fg: #e4ecef; --muted: #93a5ad; --line: #34454c;
+    --accent: #3cc2ad; --accent-ink: #0b1a17;
+    --today: #2e2a1a; --today-line: #c9a13a; --danger: #ec6a61;
+    --shadow: 0 1px 0 rgba(0,0,0,.4);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12191c; --board: #172125; --col: #1e2a2f; --card: #26343a;
+  --fg: #e4ecef; --muted: #93a5ad; --line: #34454c;
+  --accent: #3cc2ad; --accent-ink: #0b1a17;
+  --today: #2e2a1a; --today-line: #c9a13a; --danger: #ec6a61;
+  --shadow: 0 1px 0 rgba(0,0,0,.4);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 15px/1.45 var(--body);
+  display: flex; flex-direction: column;
+  padding-top: env(safe-area-inset-top, 0px);
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+header {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  padding: 12px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px));
+  border-bottom: 1px solid var(--line);
+}
+header h1 { font: 800 1.5rem/1 var(--display); margin: 0; letter-spacing: -.01em; }
+.week { color: var(--muted); font-size: .9rem; font-variant-numeric: tabular-nums; }
+.spacer { flex: 1; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.btn {
+  border: 1px solid var(--line); background: var(--col);
+  padding: 7px 12px; border-radius: 6px; font-weight: 500; font-size: .88rem;
+}
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.danger { color: var(--danger); }
+.notif-state { font-size: .82rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.dot.on { background: var(--l-verde); }
+.dot.off { background: var(--danger); }
+
+.daytabs { display: none; }
+
+main {
+  flex: 1; min-height: 0; overflow-x: auto;
+  background: var(--board);
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 16px max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+.col {
+  flex: 0 0 272px; max-height: 100%;
+  background: var(--col); border-radius: 10px;
+  border: 1px solid var(--line);
+  display: flex; flex-direction: column;
+}
+.col.today { background: var(--today); border-color: var(--today-line); }
+.col-head { padding: 10px 12px 6px; display: flex; align-items: baseline; gap: 8px; }
+.col-head h2 { font: 600 1.05rem/1.2 var(--display); margin: 0; }
+.col-head .date { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
+.col-head .count { margin-left: auto; font-size: .75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.badge-today {
+  font-size: .68rem; text-transform: uppercase; letter-spacing: .06em;
+  background: var(--today-line); color: #2a2109; padding: 1px 6px; border-radius: 4px; font-weight: 600;
+}
+.cards {
+  list-style: none; margin: 0; padding: 4px 8px 4px;
+  display: flex; flex-direction: column; gap: 8px;
+  overflow-y: auto; min-height: 12px;
+}
+.cards.drag-over { background: color-mix(in srgb, var(--accent) 10%, transparent); border-radius: 6px; }
+.empty { color: var(--muted); font-size: .85rem; padding: 6px 4px; }
+.card {
+  background: var(--card); border-radius: 8px; box-shadow: var(--shadow);
+  border: 1px solid transparent;
+  padding: 8px 10px; cursor: grab; display: flex; flex-direction: column; gap: 6px;
+}
+.card:hover { border-color: var(--line); }
+.card.dragging { opacity: .45; }
+.card.done .title { text-decoration: line-through; color: var(--muted); }
+.labels { display: flex; gap: 4px; }
+.label { width: 36px; height: 7px; border-radius: 4px; }
+.card-row { display: flex; gap: 8px; align-items: flex-start; }
+.card-row input[type=checkbox] { margin-top: 3px; accent-color: var(--accent); width: 18px; height: 18px; flex: none; }
+.title { flex: 1; min-width: 0; overflow-wrap: anywhere; font-weight: 500; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; font-size: .78rem; color: var(--muted); }
+.chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--col); border: 1px solid var(--line); padding: 1px 6px; border-radius: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.chip.late { color: var(--danger); border-color: var(--danger); }
+.add {
+  margin: 6px 8px 10px; text-align: left; background: none; border: 0;
+  padding: 8px; border-radius: 6px; color: var(--muted); font-weight: 500;
+}
+.add:hover { background: color-mix(in srgb, var(--fg) 8%, transparent); color: var(--fg); }
+.quick { margin: 4px 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+.quick textarea {
+  resize: none; border: 1px solid var(--line); border-radius: 8px; padding: 8px;
+  background: var(--card); min-height: 56px;
+}
+.quick-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.quick-actions input[type=time] { border: 1px solid var(--line); border-radius: 6px; padding: 5px; background: var(--card); }
+
+/* Modal */
+dialog {
+  border: 1px solid var(--line); border-radius: 12px; padding: 0;
+  background: var(--col); color: var(--fg); width: min(520px, calc(100vw - 24px));
+  max-height: calc(100% - 24px);
+}
+dialog::backdrop { background: rgba(10, 20, 25, .5); }
+.modal { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.modal h3 { margin: 0; font: 600 1.2rem var(--display); }
+.modal p { margin: 0; color: var(--muted); }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.field label, .field .lbl { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+.field input, .field select, .field textarea {
+  border: 1px solid var(--line); border-radius: 6px; padding: 8px 9px; background: var(--card); min-width: 0;
+}
+.field textarea { min-height: 80px; resize: vertical; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.swatches { display: flex; gap: 6px; flex-wrap: wrap; }
+.swatch { width: 34px; height: 24px; border-radius: 5px; border: 2px solid transparent; }
+.swatch[aria-pressed="true"] { border-color: var(--fg); }
+.check { display: flex; gap: 8px; align-items: center; font-size: .9rem; }
+.check input { accent-color: var(--accent); width: 18px; height: 18px; }
+.modal-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* Toasts */
+#toasts {
+  position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column; gap: 8px; z-index: 50; max-width: calc(100vw - 32px);
+}
+.toast {
+  background: var(--fg); color: var(--bg); padding: 10px 14px; border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.25); width: 300px; max-width: 100%;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.toast strong { font-weight: 600; }
+.toast small { opacity: .8; }
+
+/* Celular: uma coluna por tela, deslizando para o lado */
+@media (max-width: 700px) {
+  header h1 { font-size: 1.3rem; }
+  .week { flex-basis: 100%; order: 3; font-size: .82rem; }
+  .actions { flex-basis: 100%; order: 4; }
+  .actions .btn { padding: 8px 10px; }
+  .daytabs {
+    display: flex; gap: 4px; overflow-x: auto;
+    padding: 8px max(12px, env(safe-area-inset-right, 0px)) 8px max(12px, env(safe-area-inset-left, 0px));
+    background: var(--bg); border-bottom: 1px solid var(--line);
+    scrollbar-width: none;
+  }
+  .daytabs button {
+    flex: 1 0 auto; border: 1px solid transparent; background: none; border-radius: 6px;
+    padding: 6px 8px; font-size: .82rem; font-weight: 600; color: var(--muted);
+    display: flex; flex-direction: column; align-items: center; line-height: 1.15;
+  }
+  .daytabs button small { font-weight: 400; font-size: .72rem; font-variant-numeric: tabular-nums; }
+  .daytabs button.today { color: var(--fg); }
+  .daytabs button.today::after { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--today-line); margin-top: 2px; }
+  .daytabs button[aria-current="true"] { background: var(--accent); color: var(--accent-ink); }
+  main {
+    scroll-snap-type: x mandatory; gap: 10px; align-items: stretch;
+    padding-top: 12px; padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    scrollbar-width: none;
+  }
+  .col { flex: 0 0 calc(100vw - 32px); scroll-snap-align: center; scroll-snap-stop: always; }
+  .cards { flex: 0 1 auto; }
+  .card { cursor: pointer; padding: 10px 12px; }
+  .grid2 { grid-template-columns: 1fr; }
+  .hide-mobile { display: none; }
+  #toasts { left: 16px; right: 16px; }
+  .toast { width: auto; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .card { transition: border-color .15s, opacity .15s; }
+  .toast { animation: rise .25s ease-out; }
+  @keyframes rise { from { transform: translateY(8px); opacity: 0; } }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Em Dia</h1>
+  <span class="week" id="weekLabel"></span>
+  <span class="spacer"></span>
+  <div class="actions">
+    <span class="notif-state" id="notifState"><span class="dot"></span><span>Notificações</span></span>
+    <button class="btn primary" id="btnNotif" type="button">Ativar notificações</button>
+    <button class="btn" id="btnNewWeek" type="button" title="Desmarca tarefas repetidas e remove as concluídas que não se repetem">Nova semana</button>
+    <button class="btn" id="btnMenu" type="button">Backup</button>
+  </div>
+</header>
+
+<nav class="daytabs" id="dayTabs" aria-label="Dias da semana"></nav>
+<main id="board"></main>
+
+<dialog id="taskDlg">
+  <form class="modal" id="taskForm" method="dialog">
+    <h3>Editar tarefa</h3>
+    <div class="field">
+      <label for="fTitle">Tarefa</label>
+      <input id="fTitle" required maxlength="200">
+    </div>
+    <div class="field">
+      <label for="fDesc">Descrição</label>
+      <textarea id="fDesc"></textarea>
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label for="fDay">Dia</label>
+        <select id="fDay"></select>
+      </div>
+      <div class="field">
+        <label for="fTime">Horário</label>
+        <input id="fTime" type="time">
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label for="fRemind">Lembrar</label>
+        <select id="fRemind">
+          <option value="-1">Sem lembrete</option>
+          <option value="0">Na hora</option>
+          <option value="5">5 min antes</option>
+          <option value="10">10 min antes</option>
+          <option value="15">15 min antes</option>
+          <option value="30">30 min antes</option>
+          <option value="60">1 hora antes</option>
+          <option value="120">2 horas antes</option>
+          <option value="1440">1 dia antes</option>
+        </select>
+      </div>
+      <div class="field">
+        <span class="lbl">Etiqueta</span>
+        <div class="swatches" id="fLabels"></div>
+      </div>
+    </div>
+    <label class="check"><input type="checkbox" id="fRepeat"> Repetir toda semana</label>
+    <div class="modal-actions">
+      <button class="btn primary" type="submit" value="save">Salvar</button>
+      <button class="btn" type="button" id="btnCancel">Cancelar</button>
+      <span class="spacer"></span>
+      <button class="btn danger" type="button" id="btnDelete">Excluir</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="backupDlg">
+  <div class="modal">
+    <h3>Backup das tarefas</h3>
+    <p>As tarefas ficam salvas neste aparelho. Exporte para guardar uma cópia ou levar para outro aparelho.</p>
+    <div class="modal-actions">
+      <button class="btn primary" type="button" id="btnExport">Exportar</button>
+      <label class="btn" for="importFile">Importar arquivo</label>
+      <input type="file" id="importFile" accept="application/json,text/plain,.json" hidden>
+      <span class="spacer"></span>
+      <button class="btn" type="button" id="btnBackupClose">Fechar</button>
+    </div>
+  </div>
+</dialog>
+
+<div id="toasts" aria-live="polite"></div>
+
+<script>
+const DAYS = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
+const SHORT = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+const LABELS = ["verde", "amarelo", "laranja", "vermelho", "roxo", "azul"];
+const KEY = "quadro-semanal-v1";
+// No app Android, o Java expõe window.AndroidBridge para agendar lembretes com o app fechado.
+const NATIVE = window.AndroidBridge || null;
+
+// ---------- estado ----------
+let state = load();
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if (s && Array.isArray(s.tasks)) return s;
+  } catch (e) {}
+  return { tasks: sample(), notified: {} };
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+  syncNative();
+}
+function uid() { return Math.random().toString(36).slice(2, 10); }
+function sample() {
+  const t = (day, title, time, remind, labels, extra = {}) =>
+    ({ id: uid(), day, title, desc: "", time, remind, labels, done: false, repeat: false, ...extra });
+  return [
+    t(0, "Exemplo: reunião de planejamento", "09:00", 10, ["azul"], { repeat: true }),
+    t(0, "Exemplo: responder e-mails", "", -1, []),
+    t(2, "Exemplo: academia", "18:30", 30, ["verde"], { repeat: true }),
+    t(4, "Exemplo: pagar conta de luz", "10:00", 60, ["vermelho"]),
+    t(5, "Exemplo: feira", "08:00", 15, ["amarelo"]),
+  ];
+}
+
+// ---------- datas ----------
+function todayIdx() { return (new Date().getDay() + 6) % 7; } // seg=0 … dom=6
+function weekStart() {
+  const d = new Date(); d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - todayIdx());
+  return d;
+}
+function dateOf(day) { const d = weekStart(); d.setDate(d.getDate() + day); return d; }
+function fmt(d) { return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }); }
+function dueDate(t) {
+  if (!t.time) return null;
+  const d = dateOf(t.day);
+  const [h, m] = t.time.split(":").map(Number);
+  d.setHours(h, m, 0, 0);
+  return d;
+}
+
+// ---------- render ----------
+const board = document.getElementById("board");
+const tabs = document.getElementById("dayTabs");
+let dragId = null;
+
+function render() {
+  const keepScroll = board.scrollLeft;
+  document.getElementById("weekLabel").textContent = `Semana de ${fmt(weekStart())} a ${fmt(dateOf(6))}`;
+  board.innerHTML = "";
+  tabs.innerHTML = "";
+  const now = new Date();
+  DAYS.forEach((name, day) => {
+    const tasks = state.tasks.filter(t => t.day === day)
+      .sort((a, b) => (a.done - b.done) || ((a.time || "99").localeCompare(b.time || "99")));
+    const col = document.createElement("section");
+    col.className = "col" + (day === todayIdx() ? " today" : "");
+    col.dataset.day = day;
+    const doneCount = tasks.filter(t => t.done).length;
+    col.innerHTML = `
+      <div class="col-head">
+        <h2>${name}</h2><span class="date">${fmt(dateOf(day))}</span>
+        ${day === todayIdx() ? '<span class="badge-today">Hoje</span>' : ""}
+        <span class="count">${doneCount}/${tasks.length}</span>
+      </div>`;
+    const ul = document.createElement("ul");
+    ul.className = "cards"; ul.dataset.day = day;
+    tasks.forEach(t => ul.appendChild(cardEl(t, now)));
+    if (!tasks.length) ul.innerHTML = '<li class="empty">Nenhuma tarefa neste dia.</li>';
+    ul.addEventListener("dragover", e => { e.preventDefault(); ul.classList.add("drag-over"); });
+    ul.addEventListener("dragleave", () => ul.classList.remove("drag-over"));
+    ul.addEventListener("drop", e => {
+      e.preventDefault(); ul.classList.remove("drag-over");
+      const t = state.tasks.find(x => x.id === dragId);
+      if (t && t.day !== day) { t.day = day; resetNotified(t); save(); render(); }
+    });
+    col.appendChild(ul);
+    col.appendChild(quickAdd(day));
+    board.appendChild(col);
+
+    const tb = document.createElement("button");
+    tb.type = "button";
+    tb.className = day === todayIdx() ? "today" : "";
+    tb.innerHTML = `${SHORT[day]}<small>${fmt(dateOf(day)).slice(0, 2)}</small>`;
+    tb.addEventListener("click", () => scrollToDay(day, true));
+    tabs.appendChild(tb);
+  });
+  board.scrollLeft = keepScroll;
+  markTab();
+}
+
+function scrollToDay(day, smooth) {
+  const col = board.children[day]; if (!col) return;
+  const left = col.offsetLeft - (board.clientWidth - col.offsetWidth) / 2;
+  board.scrollTo({ left, behavior: smooth ? "smooth" : "auto" });
+}
+function currentDay() {
+  const mid = board.scrollLeft + board.clientWidth / 2;
+  let best = 0, dist = Infinity;
+  [...board.children].forEach((c, i) => {
+    const d = Math.abs(c.offsetLeft + c.offsetWidth / 2 - mid);
+    if (d < dist) { dist = d; best = i; }
+  });
+  return best;
+}
+function markTab() {
+  const cur = currentDay();
+  [...tabs.children].forEach((b, i) => b.setAttribute("aria-current", i === cur ? "true" : "false"));
+}
+board.addEventListener("scroll", () => requestAnimationFrame(markTab), { passive: true });
+
+function cardEl(t, now) {
+  const li = document.createElement("li");
+  li.className = "card" + (t.done ? " done" : "");
+  li.draggable = true;
+  const due = dueDate(t);
+  const late = due && !t.done && due < now;
+  const remindTxt = t.remind >= 0 && t.time
+    ? (t.remind === 0 ? "na hora" : t.remind >= 1440 ? "1 dia antes" : t.remind >= 60 ? `${t.remind / 60}h antes` : `${t.remind}min antes`) : "";
+  li.innerHTML = `
+    ${t.labels.length ? `<div class="labels">${t.labels.map(l => `<span class="label" style="background:var(--l-${l})"></span>`).join("")}</div>` : ""}
+    <div class="card-row">
+      <input type="checkbox" ${t.done ? "checked" : ""} aria-label="Concluir">
+      <span class="title"></span>
+    </div>
+    ${(t.time || t.desc || t.repeat) ? `<div class="meta">
+      ${t.time ? `<span class="chip${late ? " late" : ""}">🕑 ${t.time}${late ? " · atrasada" : ""}</span>` : ""}
+      ${remindTxt ? `<span class="chip">🔔 ${remindTxt}</span>` : ""}
+      ${t.repeat ? `<span class="chip">↻ semanal</span>` : ""}
+      ${t.desc ? `<span class="chip">≡ nota</span>` : ""}
+    </div>` : ""}`;
+  li.querySelector(".title").textContent = t.title;
+  const cb = li.querySelector("input");
+  cb.addEventListener("click", e => e.stopPropagation());
+  cb.addEventListener("change", () => { t.done = cb.checked; save(); render(); });
+  li.addEventListener("click", () => openEditor(t.id));
+  li.addEventListener("dragstart", e => { dragId = t.id; li.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; });
+  li.addEventListener("dragend", () => { li.classList.remove("dragging"); dragId = null; });
+  return li;
+}
+
+function quickAdd(day) {
+  const wrap = document.createElement("div");
+  const btn = document.createElement("button");
+  btn.className = "add"; btn.type = "button"; btn.textContent = "+ Adicionar tarefa";
+  wrap.appendChild(btn);
+  btn.addEventListener("click", () => {
+    wrap.innerHTML = `
+      <div class="quick">
+        <textarea id="q-${day}" placeholder="O que precisa ser feito?"></textarea>
+        <div class="quick-actions">
+          <input type="time" id="qt-${day}" aria-label="Horário (opcional)">
+          <button class="btn primary" type="button">Adicionar</button>
+          <button class="btn" type="button" aria-label="Cancelar">✕</button>
+        </div>
+      </div>`;
+    const ta = wrap.querySelector("textarea"), tm = wrap.querySelector("input");
+    const [ok, cancel] = wrap.querySelectorAll(".quick-actions .btn");
+    ta.focus();
+    const add = () => {
+      const title = ta.value.trim();
+      if (!title) { ta.focus(); return; }
+      state.tasks.push({ id: uid(), day, title, desc: "", time: tm.value, remind: tm.value ? 10 : -1,
+        labels: [], done: false, repeat: false });
+      save(); render();
+      board.children[day].querySelector(".add").click(); // reabre para adicionar outra
+    };
+    ok.addEventListener("click", add);
+    cancel.addEventListener("click", render);
+    ta.addEventListener("keydown", e => {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); add(); }
+      if (e.key === "Escape") render();
+    });
+  });
+  return wrap;
+}
+
+// ---------- editor ----------
+const dlg = document.getElementById("taskDlg");
+const f = id => document.getElementById(id);
+let editing = null, pickedLabels = [];
+DAYS.forEach((d, i) => f("fDay").add(new Option(d, i)));
+LABELS.forEach(l => {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "swatch"; b.style.background = `var(--l-${l})`;
+  b.title = l; b.dataset.l = l; b.setAttribute("aria-pressed", "false");
+  b.addEventListener("click", () => {
+    pickedLabels = pickedLabels.includes(l) ? pickedLabels.filter(x => x !== l) : [...pickedLabels, l];
+    syncSwatches();
+  });
+  f("fLabels").appendChild(b);
+});
+function syncSwatches() {
+  f("fLabels").querySelectorAll(".swatch").forEach(b => b.setAttribute("aria-pressed", pickedLabels.includes(b.dataset.l)));
+}
+function openEditor(id) {
+  const t = state.tasks.find(x => x.id === id); if (!t) return;
+  editing = t;
+  f("fTitle").value = t.title; f("fDesc").value = t.desc || "";
+  f("fDay").value = t.day; f("fTime").value = t.time || "";
+  f("fRemind").value = String(t.remind ?? -1); f("fRepeat").checked = !!t.repeat;
+  pickedLabels = [...t.labels]; syncSwatches();
+  dlg.showModal();
+}
+f("taskForm").addEventListener("submit", () => {
+  if (!editing) return;
+  const before = editing.day + editing.time + editing.remind;
+  Object.assign(editing, {
+    title: f("fTitle").value.trim() || editing.title, desc: f("fDesc").value,
+    day: Number(f("fDay").value), time: f("fTime").value,
+    remind: Number(f("fRemind").value), repeat: f("fRepeat").checked, labels: pickedLabels,
+  });
+  if (before !== editing.day + editing.time + editing.remind) resetNotified(editing);
+  save(); render();
+});
+f("btnCancel").addEventListener("click", () => dlg.close());
+f("btnDelete").addEventListener("click", () => {
+  const btn = f("btnDelete");
+  if (btn.dataset.confirm !== "1") { btn.dataset.confirm = "1"; btn.textContent = "Confirmar exclusão"; return; }
+  state.tasks = state.tasks.filter(t => t !== editing);
+  save(); dlg.close(); render(); toast("Tarefa excluída");
+});
+dlg.addEventListener("close", () => { const b = f("btnDelete"); b.dataset.confirm = ""; b.textContent = "Excluir"; });
+
+// ---------- nova semana ----------
+f("btnNewWeek").addEventListener("click", () => {
+  const b = f("btnNewWeek");
+  if (b.dataset.confirm !== "1") {
+    b.dataset.confirm = "1"; b.textContent = "Confirmar?";
+    setTimeout(() => { b.dataset.confirm = ""; b.textContent = "Nova semana"; }, 4000);
+    return;
+  }
+  state.tasks = state.tasks.filter(t => t.repeat || !t.done);
+  state.tasks.forEach(t => { if (t.repeat) t.done = false; });
+  state.notified = {};
+  save(); render(); toast("Semana reiniciada", "Tarefas semanais desmarcadas e concluídas removidas.");
+  b.dataset.confirm = ""; b.textContent = "Nova semana";
+});
+
+// ---------- backup ----------
+const bdlg = f("backupDlg");
+f("btnMenu").addEventListener("click", () => bdlg.showModal());
+f("btnBackupClose").addEventListener("click", () => bdlg.close());
+f("btnExport").addEventListener("click", () => {
+  const json = JSON.stringify(state, null, 2);
+  const name = `em-dia-${new Date().toISOString().slice(0, 10)}.json`;
+  if (NATIVE) { NATIVE.share(json, name); return; }
+  const blob = new Blob([json], { type: "application/json" });
+  const file = new File([blob], name, { type: "application/json" });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    navigator.share({ files: [file], title: "Backup do Em Dia" }).catch(() => {});
+    return;
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name;
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+f("importFile").addEventListener("change", async e => {
+  const file = e.target.files[0]; if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    if (!Array.isArray(data.tasks)) throw new Error();
+    state = { tasks: data.tasks, notified: data.notified || {} };
+    save(); render(); bdlg.close(); toast("Backup importado", `${state.tasks.length} tarefas carregadas.`);
+  } catch { toast("Arquivo inválido", "Escolha um arquivo exportado pelo Em Dia."); }
+  e.target.value = "";
+});
+
+// ---------- notificações ----------
+function permission() {
+  if (NATIVE) { try { return NATIVE.notifStatus(); } catch (e) { return "default"; } }
+  return "Notification" in window ? Notification.permission : "unsupported";
+}
+function syncNotifUI() {
+  const dot = document.querySelector("#notifState .dot"), txt = document.querySelector("#notifState span:last-child");
+  const btn = f("btnNotif");
+  const p = permission();
+  if (p === "unsupported") { dot.className = "dot off"; txt.textContent = "Avisos só com o app aberto"; btn.hidden = true; return; }
+  dot.className = "dot " + (p === "granted" ? "on" : p === "denied" ? "off" : "");
+  txt.textContent = p === "granted" ? "Notificações ativas" : p === "denied" ? "Notificações bloqueadas" : "Notificações desativadas";
+  btn.hidden = p === "granted";
+  btn.textContent = p === "denied" ? "Liberar notificações" : "Ativar notificações";
+}
+f("btnNotif").addEventListener("click", async () => {
+  if (NATIVE) { NATIVE.requestPermission(); return; } // o app chama syncNotifUI() quando o usuário responder
+  if (!("Notification" in window)) return;
+  if (Notification.permission === "denied") {
+    toast("Notificações bloqueadas", "Libere as notificações deste site nas configurações do navegador.");
+    return;
+  }
+  try { await Notification.requestPermission(); } catch (e) {}
+  syncNotifUI();
+  if (Notification.permission === "granted") notify("Notificações ativadas", "Você será lembrado das suas tarefas.", true);
+});
+
+function beep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = 880; g.gain.setValueAtTime(.15, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + .6);
+    o.start(); o.stop(ctx.currentTime + .6);
+  } catch (e) {}
+}
+async function notify(title, body, system) {
+  toast(title, body);
+  beep();
+  // No app Android a notificação do sistema vem do agendador nativo.
+  if (NATIVE || !system || permission() !== "granted") return;
+  try {
+    const reg = "serviceWorker" in navigator ? await navigator.serviceWorker.getRegistration() : null;
+    if (reg) { await reg.showNotification(title, { body, tag: title + body, icon: "icon-192.png" }); return; }
+    const n = new Notification(title, { body, tag: title + body });
+    n.onclick = () => { window.focus(); n.close(); };
+  } catch (e) {}
+}
+function toast(title, body = "") {
+  const el = document.createElement("div");
+  el.className = "toast";
+  el.innerHTML = "<strong></strong><small></small>";
+  el.querySelector("strong").textContent = title;
+  el.querySelector("small").textContent = body;
+  document.getElementById("toasts").appendChild(el);
+  setTimeout(() => el.remove(), 7000);
+}
+function notifKey(t) { return `${t.id}|${weekStart().toISOString().slice(0, 10)}|${t.day}|${t.time}|${t.remind}`; }
+function resetNotified(t) {
+  Object.keys(state.notified).forEach(k => { if (k.startsWith(t.id + "|")) delete state.notified[k]; });
+}
+function checkReminders() {
+  const now = Date.now();
+  let changed = false;
+  for (const t of state.tasks) {
+    if (t.done || t.remind < 0 || !t.time) continue;
+    const due = dueDate(t); if (!due) continue;
+    const fireAt = due.getTime() - t.remind * 60000;
+    const key = notifKey(t);
+    // dispara se já passou da hora do lembrete, mas no máximo 1h depois do horário da tarefa
+    if (now >= fireAt && now <= due.getTime() + 3600000 && !state.notified[key]) {
+      state.notified[key] = now; changed = true;
+      notify(`Lembrete: ${t.title}`, reminderBody(t), true);
+    }
+  }
+  if (changed) { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+}
+function reminderBody(t) {
+  return t.remind === 0 ? `Agora · ${t.time}` : `${DAYS[t.day]} às ${t.time}`;
+}
+
+// Lista de lembretes futuros para o agendador do Android (funciona com o app fechado).
+function hashId(s) { let h = 7; for (const c of s) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h) % 2000000000; }
+function upcomingReminders() {
+  const now = Date.now(), WEEK = 7 * 86400000, out = [];
+  for (const t of state.tasks) {
+    if (t.remind < 0 || !t.time) continue;
+    if (t.done && !t.repeat) continue;
+    let at = dueDate(t).getTime() - t.remind * 60000;
+    if (t.done) at += WEEK; // semanal já feita: próximo aviso é na semana que vem
+    if (at <= now) { if (!t.repeat) continue; while (at <= now) at += WEEK; }
+    out.push({ id: hashId(t.id), title: `Lembrete: ${t.title}`, body: reminderBody(t), at, repeat: !!t.repeat });
+  }
+  return out;
+}
+function syncNative() {
+  if (!NATIVE) return;
+  try { NATIVE.sync(JSON.stringify(upcomingReminders())); } catch (e) {}
+}
+
+// ---------- início ----------
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+let lastDay = todayIdx();
+function onAppResume() { render(); syncNotifUI(); checkReminders(); }
+render(); syncNotifUI(); checkReminders(); syncNative();
+requestAnimationFrame(() => scrollToDay(todayIdx(), false));
+setInterval(() => {
+  checkReminders();
+  if (todayIdx() !== lastDay) { lastDay = todayIdx(); render(); syncNative(); }
+}, 20000);
+setInterval(render, 5 * 60000); // atualiza marcação de "atrasada"
+document.addEventListener("visibilitychange", () => { if (!document.hidden) onAppResume(); });
+</script>
+</body>
+</html>

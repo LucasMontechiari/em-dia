@@ -1,0 +1,10 @@
+# Chave de assinatura do APK: nunca publicar
+*.keystore
+*.jks
+
+# Arquivos temporários do build
+mobile/android/build/
+*.idsig
+
+# Configurações locais do editor/Claude
+.claude/
