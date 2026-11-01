@@ -9,7 +9,7 @@ O mesmo app roda em três lugares:
 | Onde | Arquivo | Lembretes |
 |---|---|---|
 | **Android** (app instalável) | [`mobile/EmDia.apk`](mobile/EmDia.apk) | Chegam mesmo com o app fechado |
-| **iPhone e Android** (app web instalável) | [`mobile/www/`](mobile/www) | Chegam com o app aberto |
+| **iPhone e Android** (app web instalável) | **[lucasmontechiari.github.io/em-dia](https://lucasmontechiari.github.io/em-dia/)** | Chegam com o app aberto |
 | **Computador** | [`em-dia.html`](em-dia.html) | Chegam com a aba aberta |
 
 ---
@@ -201,7 +201,9 @@ A pasta `mobile/www/` é um **app web instalável** (PWA). Ela tem:
 - `manifest.webmanifest`: nome, cores e ícones usados na instalação;
 - `sw.js`: guarda o app no aparelho para funcionar sem internet.
 
-Para instalar, a pasta precisa estar publicada em um site com **https**. O jeito mais simples é o [Netlify Drop](https://app.netlify.com/drop): crie uma conta grátis e arraste a pasta `www` para a página. Este repositório também pode ser publicado pelo **GitHub Pages**, apontando para a pasta `mobile/www`.
+A versão web está publicada em **https://lucasmontechiari.github.io/em-dia/**.
+
+A publicação é automática. O arquivo [`.github/workflows/pages.yml`](.github/workflows/pages.yml) envia a pasta `mobile/www` para o **GitHub Pages** sempre que algo nessa pasta muda na branch `main`. O andamento aparece na aba **Actions** do repositório.
 
 Para instalar a partir do endereço publicado:
 - **iPhone:** abra no **Safari** e toque em **Compartilhar › Adicionar à Tela de Início**.
