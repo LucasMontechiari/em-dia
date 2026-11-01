@@ -190,7 +190,7 @@ Todo APK precisa ser assinado. Na primeira vez, o `build.sh` cria uma chave em `
 
 ### Versão
 
-Para lançar uma atualização, aumente `--version-code` e `--version-name` no `build.sh`. Versão atual: **1.1** (código 2).
+Para lançar uma atualização, aumente `--version-code` e `--version-name` no `build.sh`. Versão atual: **1.2** (código 3).
 
 ---
 

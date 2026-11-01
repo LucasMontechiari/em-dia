@@ -74,6 +74,22 @@ header {
   border-bottom: 1px solid var(--line);
 }
 header h1 { font: 800 1.5rem/1 var(--display); margin: 0; letter-spacing: -.01em; }
+.brand { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-width: 0; }
+.mobile-actions { display: none; gap: 8px; }
+.icon-btn {
+  position: relative; width: 42px; height: 42px; display: grid; place-items: center;
+  border: 1px solid var(--line); background: var(--col); color: var(--fg); border-radius: 10px;
+}
+.icon-btn .dot { position: absolute; top: 8px; right: 8px; box-shadow: 0 0 0 2px var(--col); }
+.menu-list { display: flex; flex-direction: column; gap: 8px; }
+.menu-item {
+  text-align: left; display: flex; flex-direction: column; gap: 2px;
+  padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--card);
+}
+.menu-item strong { font-weight: 600; }
+.menu-item small { color: var(--muted); font-size: .82rem; }
+.menu-item.confirm { border-color: var(--danger); }
+.menu-item.confirm strong { color: var(--danger); }
 .week { color: var(--muted); font-size: .9rem; font-variant-numeric: tabular-nums; }
 .spacer { flex: 1; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
@@ -191,10 +207,12 @@ dialog::backdrop { background: rgba(10, 20, 25, .5); }
 
 /* Celular: uma coluna por tela, deslizando para o lado */
 @media (max-width: 700px) {
-  header h1 { font-size: 1.3rem; }
-  .week { flex-basis: 100%; order: 3; font-size: .82rem; }
-  .actions { flex-basis: 100%; order: 4; }
-  .actions .btn { padding: 8px 10px; }
+  header { flex-wrap: nowrap; padding-top: 10px; padding-bottom: 10px; }
+  header h1 { font-size: 1.35rem; }
+  .brand { flex-direction: column; align-items: flex-start; gap: 3px; }
+  .week { font-size: .78rem; }
+  .actions { display: none; }
+  .mobile-actions { display: flex; }
   .daytabs {
     display: flex; gap: 4px; overflow-x: auto;
     padding: 8px max(12px, env(safe-area-inset-right, 0px)) 8px max(12px, env(safe-area-inset-left, 0px));
@@ -233,9 +251,20 @@ dialog::backdrop { background: rgba(10, 20, 25, .5); }
 <body>
 
 <header>
-  <h1>Em Dia</h1>
-  <span class="week" id="weekLabel"></span>
+  <div class="brand">
+    <h1>Em Dia</h1>
+    <span class="week" id="weekLabel"></span>
+  </div>
   <span class="spacer"></span>
+  <div class="mobile-actions">
+    <button class="icon-btn" id="btnBell" type="button" aria-label="Notificações">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+      <span class="dot" id="bellDot"></span>
+    </button>
+    <button class="icon-btn" id="btnMore" type="button" aria-label="Mais opções">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+    </button>
+  </div>
   <div class="actions">
     <span class="notif-state" id="notifState"><span class="dot"></span><span>Notificações</span></span>
     <button class="btn primary" id="btnNotif" type="button">Ativar notificações</button>
@@ -296,6 +325,26 @@ dialog::backdrop { background: rgba(10, 20, 25, .5); }
       <button class="btn danger" type="button" id="btnDelete">Excluir</button>
     </div>
   </form>
+</dialog>
+
+<dialog id="menuDlg">
+  <div class="modal">
+    <h3>Opções</h3>
+    <div class="menu-list">
+      <button class="menu-item" type="button" id="mNewWeek">
+        <strong>Nova semana</strong>
+        <small>Desmarca as tarefas semanais e remove as concluídas que não se repetem</small>
+      </button>
+      <button class="menu-item" type="button" id="mBackup">
+        <strong>Backup</strong>
+        <small>Exportar ou importar suas tarefas</small>
+      </button>
+    </div>
+    <div class="modal-actions">
+      <span class="spacer"></span>
+      <button class="btn" type="button" id="btnMenuClose">Fechar</button>
+    </div>
+  </div>
 </dialog>
 
 <dialog id="backupDlg">
@@ -556,11 +605,34 @@ f("btnNewWeek").addEventListener("click", () => {
     setTimeout(() => { b.dataset.confirm = ""; b.textContent = "Nova semana"; }, 4000);
     return;
   }
+  newWeek();
+  b.dataset.confirm = ""; b.textContent = "Nova semana";
+});
+function newWeek() {
   state.tasks = state.tasks.filter(t => t.repeat || !t.done);
   state.tasks.forEach(t => { if (t.repeat) t.done = false; });
   state.notified = {};
   save(); render(); toast("Semana reiniciada", "Tarefas semanais desmarcadas e concluídas removidas.");
-  b.dataset.confirm = ""; b.textContent = "Nova semana";
+}
+
+// ---------- menu do celular (⋯) ----------
+const mdlg = f("menuDlg");
+f("btnMore").addEventListener("click", () => mdlg.showModal());
+f("btnMenuClose").addEventListener("click", () => mdlg.close());
+f("mNewWeek").addEventListener("click", () => {
+  const b = f("mNewWeek");
+  if (!b.classList.contains("confirm")) {
+    b.classList.add("confirm");
+    b.querySelector("strong").textContent = "Toque de novo para confirmar";
+    return;
+  }
+  mdlg.close(); newWeek();
+});
+f("mBackup").addEventListener("click", () => { mdlg.close(); f("backupDlg").showModal(); });
+mdlg.addEventListener("close", () => {
+  const b = f("mNewWeek");
+  b.classList.remove("confirm");
+  b.querySelector("strong").textContent = "Nova semana";
 });
 
 // ---------- backup ----------
@@ -601,13 +673,27 @@ function syncNotifUI() {
   const dot = document.querySelector("#notifState .dot"), txt = document.querySelector("#notifState span:last-child");
   const btn = f("btnNotif");
   const p = permission();
-  if (p === "unsupported") { dot.className = "dot off"; txt.textContent = "Avisos só com o app aberto"; btn.hidden = true; return; }
-  dot.className = "dot " + (p === "granted" ? "on" : p === "denied" ? "off" : "");
+  const bell = f("btnBell");
+  if (p === "unsupported") {
+    dot.className = f("bellDot").className = "dot off";
+    txt.textContent = "Avisos só com o app aberto";
+    bell.setAttribute("aria-label", txt.textContent);
+    btn.hidden = true; return;
+  }
+  dot.className = f("bellDot").className = "dot " + (p === "granted" ? "on" : p === "denied" ? "off" : "");
   txt.textContent = p === "granted" ? "Notificações ativas" : p === "denied" ? "Notificações bloqueadas" : "Notificações desativadas";
+  bell.setAttribute("aria-label", txt.textContent);
   btn.hidden = p === "granted";
   btn.textContent = p === "denied" ? "Liberar notificações" : "Ativar notificações";
 }
-f("btnNotif").addEventListener("click", async () => {
+f("btnBell").addEventListener("click", () => {
+  const p = permission();
+  if (p === "granted") toast("Notificações ativas", "Você será avisado das tarefas que têm lembrete.");
+  else if (p === "unsupported") toast("Avisos só com o app aberto", "Este navegador não mostra notificações do sistema.");
+  else askNotifications();
+});
+f("btnNotif").addEventListener("click", askNotifications);
+async function askNotifications() {
   if (NATIVE) { NATIVE.requestPermission(); return; } // o app chama syncNotifUI() quando o usuário responder
   if (!("Notification" in window)) return;
   if (Notification.permission === "denied") {
@@ -617,7 +703,7 @@ f("btnNotif").addEventListener("click", async () => {
   try { await Notification.requestPermission(); } catch (e) {}
   syncNotifUI();
   if (Notification.permission === "granted") notify("Notificações ativadas", "Você será lembrado das suas tarefas.", true);
-});
+}
 
 function beep() {
   try {

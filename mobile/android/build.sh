@@ -11,7 +11,7 @@ rm -rf "$OUT" && mkdir -p "$OUT/gen" "$OUT/classes" "$OUT/dex"
 # 1. Recursos + manifesto + o quadro (pasta www) como assets
 "$BT/aapt2.exe" compile --dir res -o "$OUT/res.zip"
 "$BT/aapt2.exe" link -o "$OUT/app.unaligned.apk" -I "$JAR" --manifest AndroidManifest.xml \
-  --min-sdk-version 26 --target-sdk-version 34 --version-code 2 --version-name 1.1 \
+  --min-sdk-version 26 --target-sdk-version 34 --version-code 3 --version-name 1.2 \
   -A ../www --java "$OUT/gen" "$OUT/res.zip"
 
 # 2. Código Java
